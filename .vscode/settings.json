@@ -1,0 +1,18 @@
+{
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#4B0B64",
+        "titleBar.activeBackground": "#69108B",
+        "titleBar.activeForeground": "#FDF9FE"
+    },
+    "files.associations": {
+        "array": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "regex": "cpp"
+    }
+}

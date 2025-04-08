@@ -1,0 +1,171 @@
+Address,Register,Value,Description
+0x00,IOCFG2,0x2F,GDO2 output pin configuration
+0x01,IOCFG1,0x2F,GDO1 output pin configuration
+0x02,IOCFG0,0x2F,GDO0 output pin configuration
+0x03,FIFOTHR,0x00,RX FIFO and TX FIFO thresholds
+0x04,SYNC1,0xFF,"Sync word, high byte"
+0x05,SYNC0,0xFE,"Sync word, low byte"
+0x06,PKTLEN,0xD1,Packet length
+0x07,PKTCTRL1,0x00,Packet automation control
+7:5 PQT
+4: NA
+3: CRC_AUTOFLUSH
+2: APPEND_STATUS
+1:0 ADDR_CHECK
+ 000 0 0 0 00
+
+0x08,PKTCTRL0,0x02,Packet automation control
+7: NA
+6: WHITE DATA
+5:4 PKT_FORMAT
+3: NA
+2: CRC_EN
+1:0 LENGTH_CONFIG
+  0 0 00 0 0 10
+
+0x09,ADDR,0x00,Device address
+0x0A,CHANNR,0x00,Channel number
+0x0B,FSCTRL1,0x06,Frequency synthesizer control
+0x0C,FSCTRL0,0x00,Frequency synthesizer control
+0x0D,FREQ2,0x21,"Frequency control word, high byte"
+0x0E,FREQ1,0x69,"Frequency control word, middle byte"
+0x0F,FREQ0,0xD8,"Frequency control word, low byte"
+
+// Rx BW
+0x10,MDMCFG4,0xA7,Modem configuration
+7:6 CHANBW_E
+5:4 CHANBW_M
+3:0 DRATE_E
+
+'0b10 10 0111'
+
+0x11,MDMCFG3,0x83,Modem configuration
+7:0 DRATE_M
+
+0x12,MDMCFG2,0x02,Modem configuration
+7: DEM_DCFILT_OFF
+6:4 MOD_FORMAT (2-FSK)
+3 Manchester_EN
+2:0 SYNC_MODE
+
+// Channel spacing
+0x13,MDMCFG1,0x22,Modem configuration
+7: FEC
+6:4 NUM_PREAMBLE
+3:2 NA
+1:0 CHANSPEC_E
+  1 000 10
+
+0x14,MDMCFG0,0xF8,Modem configuration
+7:0 CHANSPC_M
+
+0x15,DEVIATN,0x40,Modem deviation setting
+0x16,MCSM2,0x07,Main Radio Control State Machine configuration
+0x17,MCSM1,0x30,Main Radio Control State Machine configuration
+0x18,MCSM0,0x08,Main Radio Control State Machine configuration
+0x19,FOCCFG,0x16,Frequency Offset Compensation configuration
+0x1A,BSCFG,0x6C,Bit Synchronization configuration
+0x1B,AGCTRL2,0x43,AGC control
+0x1C,AGCTRL1,0x40,AGC control
+0x1D,AGCTRL0,0x91,AGC control
+0x1E,WOREVT1,0x87,High byte Event 0 timeout
+0x1F,WOREVT0,0x6B,Low byte Event 0 timeout
+0x20,WORCTRL,0xF8,Wake On Radio control
+0x21,FREND1,0x56,Front end RX configuration
+0x22,FREND0,0x10,Front end TX configuration
+0x23,FSCAL3,0xE9,Frequency synthesizer calibration
+0x24,FSCAL2,0x2A,Frequency synthesizer calibration
+0x25,FSCAL1,0x00,Frequency synthesizer calibration
+0x26,FSCAL0,0x1F,Frequency synthesizer calibration
+0x27,RCCTRL1,0x41,RC oscillator configuration
+0x28,RCCTRL0,0x00,RC oscillator configuration
+0x29,FSTEST,0x59,Frequency synthesizer calibration control
+0x2A,PTEST,0x7F,Production test
+0x2B,AGCTEST,0x3F,AGC test
+0x2C,TEST2,0x81,Various test settings
+0x2D,TEST1,0x35,Various test settings
+0x2E,TEST0,0x09,Various test settings
+
+
+// Before TX
+0x12,MDMCFG2,0x12,Modem configuration
+0x0E,FREQ1,0x6A,"Frequency control word, middle byte"
+0x0F,FREQ0,0xD3,"Frequency control word, low byte"
+0x08,PKTCTRL0,0x02,Packet automation control
+0x02,IOCFG0,0x02,GDO0 output pin configuration
+0x03,FIFOTHR,0x07,RX FIFO and TX FIFO thresholds
+
+
+CA 02 C4 05 01 FD 05 FD 02 EC F9 1C 30 CF 31 39 B5 41 2D F0 66 8F AD
+AA 00 01 CA FD 3B FA FE 02 FA 02 FD 13 06 E3 CF 30 CE 39 4A BE 2D F0 66 70 52
+AA FF FE CA 02 C4 05 01 FD 05 FD 02 EC F9 1C 30 CF 31 39 B5 41 2D F0 66 8F AD
+AA 00 01 CA FD 3B FA FE 02 FA 02 FD 13 06 E3 CF 30 CE 39 4A BE 2D F0 66 70 52
+AA FF FE CA 02 C4 05 01 FD 05 FD 02 EC F9 1C 30 CF 31 39 B5 41 2D F0 66 8F AD
+AA 00 01 CA FD 3B FA FE 02 FA 02 FD 13 06 E3 CF 30 CE 39 4A BE 2D F0 66 70 52
+AA FF FE CA 02 C4 05 01 FD 05 FD 02 EC F9 1C 30 CF 31 39 B5 41 2D F0 66 8F AD
+AA 00 01 CA FD 3B FA FE 02 FA 02 FD 13 06 E3 CF 30 CE 39 4A BE 2D F0 66 70 52 00 00 00
+
+// Then after 3 transmits
+0x12,MDMCFG2,0x12,Modem configuration
+7: DEM_DCFILT_OFF
+6:4 MOD_FORMAT (2-FSK)
+3 Manchester_EN
+2:0 SYNC_MODE
+  0b0 001 0 010
+
+// 0x0D,FREQ2,0x21,"Frequency control word, high byte"  858
+0x0E,FREQ1,0x66,"Frequency control word, middle byte" 10.359375
+0x0F,FREQ0,0xE3,"Frequency control word, low byte" 0.09006225000000001
+
+Send 0xff xff 0xff 0fff
+
+
+TX BOOT:
+
+
+
+
+
+
+
+Close:
+C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA FF FE C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA FF FE C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46 06 E3 CF
+
+
+Open:
+C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43l a  e      rh
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43 06 E3 CF
+
+Close again:
+C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA FF FE C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA FF FE C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA FF FE C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46 06 E3 CF
+
+Open again:
+C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43 06 E3 CF
+
