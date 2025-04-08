@@ -15,10 +15,9 @@ void setup() {
     Serial.println("Connection Error");
   }
 
-
-
-  ELECHOUSE_cc1101.Init();       // must be set to initialize the cc1101!
-  //ELECHOUSE_cc1101.setCCMode(1); // set config for internal transmission mode.
+  ELECHOUSE_cc1101.Init(); // must be set to initialize the cc1101!
+  // ELECHOUSE_cc1101.setCCMode(1); // set config for internal transmission
+  // mode.
 
   ELECHOUSE_cc1101.setModulation(0); // CHECK
 
@@ -73,19 +72,28 @@ void setup() {
   ELECHOUSE_cc1101.setModulation(1);     // CHECK
   ELECHOUSE_cc1101.setMHZ(868.44943725); // CHECK
 
-  Serial.printf("Partnum: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_PARTNUM));
-  Serial.printf("Version: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_VERSION));
-  Serial.printf("FREQEST: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_FREQEST));
+  Serial.printf("Partnum: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_PARTNUM));
+  Serial.printf("Version: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_VERSION));
+  Serial.printf("FREQEST: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_FREQEST));
   Serial.printf("LQI: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_LQI));
   Serial.printf("RSSI: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_RSSI));
-  Serial.printf("MARCSTATE: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE));
-  Serial.printf("WORTIME1: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_WORTIME1));
-  Serial.printf("WORTIME0: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_WORTIME0));
-  Serial.printf("PKTSTATUS: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_PKTSTATUS));
-  Serial.printf("CC1101_VCO_VC_DAC: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_VCO_VC_DAC));
-  Serial.printf("TXBYTES: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_TXBYTES));
-  Serial.printf("RXBYTES: %x\r\n", ELECHOUSE_cc1101.SpiReadStatus(CC1101_RXBYTES));
-
+  Serial.printf("MARCSTATE: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE));
+  Serial.printf("WORTIME1: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_WORTIME1));
+  Serial.printf("WORTIME0: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_WORTIME0));
+  Serial.printf("PKTSTATUS: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_PKTSTATUS));
+  Serial.printf("CC1101_VCO_VC_DAC: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_VCO_VC_DAC));
+  Serial.printf("TXBYTES: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_TXBYTES));
+  Serial.printf("RXBYTES: %x\r\n",
+                ELECHOUSE_cc1101.SpiReadStatus(CC1101_RXBYTES));
 
   Serial.println("Listening for packets...");
 }
@@ -113,34 +121,18 @@ void loop() {
       // Get received Data and calculate length
       int len = ELECHOUSE_cc1101.ReceiveData(buffer);
 
-
-
-
-
-
       // If any of the bytes returned by len is not 0xff
-      if (!buffer_is_empty(len)) {
-        Serial.print("Received: ");
-        Serial.print(len);
-        Serial.print(" bytes: ");
-        // Rssi Level in dBm
-        Serial.print("Rssi: ");
-        Serial.println(ELECHOUSE_cc1101.getRssi());
+      Serial.printf("\r\nLENGTH: %d RSSI: %d LQT: %d\r\n", len,
+                    ELECHOUSE_cc1101.getRssi(), ELECHOUSE_cc1101.getLqi());
 
-        // Link Quality Indicator
-        Serial.print("LQI: ");
-        Serial.println(ELECHOUSE_cc1101.getLqi());
-
-        // Print received in bytes format.
-        for (int i = 0; i < len; i++) {
-          if (i > 0) {
-            Serial.print(", ");
-          }
-          Serial.print("0x");
-          Serial.print(buffer[i]);
-        }
-        Serial.println();
+      // Print received in bytes format.
+      for (int i = 0; i < len; i++) {
+        // if (i > 0) {
+        //   Serial.print(", ");
+        // }
+        Serial.printf("%02X ", buffer[i]);
       }
+      Serial.println();
     }
   }
 }
