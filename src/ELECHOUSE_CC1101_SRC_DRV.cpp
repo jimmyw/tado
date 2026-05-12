@@ -99,7 +99,7 @@ void ELECHOUSE_CC1101::SpiStart(void) {
   pinMode(MISO_PIN, INPUT);
   pinMode(SS_PIN, OUTPUT);
 
-  SPI = SPIClass(MOSI_PIN, MISO_PIN,SCK_PIN, SS_PIN);
+  SPI = SPIClass(MOSI_PIN, MISO_PIN, SCK_PIN, SS_PIN);
   SPI.begin();
 }
 /****************************************************************
@@ -280,7 +280,7 @@ byte ELECHOUSE_CC1101::SpiReadStatus(byte addr) {
   value = SPI.transfer(0);
   digitalWrite(SS_PIN, HIGH);
   SpiEnd();
-  //Serial.printf("Read status: 0x%02X Value: 0x%02X\r\n", addr, value);
+  // Serial.printf("Read status: 0x%02X Value: 0x%02X\r\n", addr, value);
   return value;
 }
 /****************************************************************
@@ -612,7 +612,7 @@ void ELECHOUSE_CC1101::setMHZ(float mhz) {
   SpiWriteReg(CC1101_FREQ1, freq1);
   SpiWriteReg(CC1101_FREQ0, freq0);
 
-  Calibrate();
+  // Calibrate();
 }
 /****************************************************************
  *FUNCTION NAME:Calibrate
@@ -620,6 +620,7 @@ void ELECHOUSE_CC1101::setMHZ(float mhz) {
  *INPUT        :none
  *OUTPUT       :none
  ****************************************************************/
+#if 0
 void ELECHOUSE_CC1101::Calibrate(void) {
   // Serial.printf("Calibrate: %f MHz\r\n", MHz);
   if (MHz >= 300 && MHz <= 348) {
@@ -676,6 +677,7 @@ void ELECHOUSE_CC1101::Calibrate(void) {
     }
   }
 }
+#endif
 /****************************************************************
  *FUNCTION NAME:Calibration offset
  *FUNCTION     :Set calibration offset
