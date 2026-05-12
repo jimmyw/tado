@@ -1,0 +1,19 @@
+mainmenu "TADO CC1101 Receiver"
+
+source "Kconfig.zephyr"
+
+menu "Home Assistant"
+
+config HA_SERVER_IP
+	string "Home Assistant server IP address"
+	default "192.168.1.248"
+
+config HA_SERVER_PORT
+	int "Home Assistant server port"
+	default 8123
+
+config HA_LONG_LIVED_TOKEN
+	string "Home Assistant long-lived access token"
+	default ""
+
+endmenu

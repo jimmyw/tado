@@ -13,8 +13,93 @@
 #include <zephyr/net/net_mgmt.h>
 
 #include "cc1101.h"
+#include "ha_client.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
+
+/* ── Sensor state tracking ──────────────────────────────────────────── */
+
+#define MAX_SENSORS 8
+#define PAYLOAD_LEN 7
+
+struct sensor_state {
+  uint32_t device_id;
+  uint8_t tamper;
+  uint8_t reed;
+};
+
+static struct sensor_state sensors[MAX_SENSORS];
+static int sensor_count;
+
+static struct sensor_state *find_or_add_sensor(uint32_t dev_id) {
+  for (int i = 0; i < sensor_count; i++) {
+    if (sensors[i].device_id == dev_id) {
+      return &sensors[i];
+    }
+  }
+  if (sensor_count < MAX_SENSORS) {
+    sensors[sensor_count].device_id = dev_id;
+    sensors[sensor_count].tamper = 0xFF; /* force first update */
+    sensors[sensor_count].reed = 0xFF;
+    return &sensors[sensor_count++];
+  }
+  return NULL;
+}
+
+static bool verify_checksum(const uint8_t *payload) {
+  uint8_t xor_val = 0;
+  for (int i = 0; i < 6; i++) {
+    xor_val ^= payload[i];
+  }
+  return xor_val == payload[6];
+}
+
+static void post_sensor_state(uint32_t dev_id, const char *suffix, bool state,
+                              int rssi, uint8_t lqi) {
+  int ret = ha_update_sensor(dev_id, suffix, state, rssi, lqi);
+  if (ret < 0) {
+    LOG_WRN("Failed to update %08x_%s: %d", dev_id, suffix, ret);
+  }
+}
+
+static void process_packet(const uint8_t *payload, uint8_t len, int rssi,
+                           uint8_t lqi) {
+  if (len != PAYLOAD_LEN) {
+    LOG_WRN("Unexpected payload length: %d", len);
+    return;
+  }
+
+  if (!verify_checksum(payload)) {
+    LOG_WRN("Checksum mismatch");
+    return;
+  }
+
+  uint32_t dev_id = ((uint32_t)payload[0] << 24) |
+                    ((uint32_t)payload[1] << 16) | ((uint32_t)payload[2] << 8) |
+                    payload[3];
+  uint8_t tamper = payload[4];
+  uint8_t reed = payload[5];
+
+  LOG_INF("Sensor %08x: tamper=%u reed=%u RSSI=%d LQI=%u", dev_id, tamper, reed,
+          rssi, lqi);
+
+  struct sensor_state *s = find_or_add_sensor(dev_id);
+  if (!s) {
+    LOG_WRN("Sensor table full, ignoring %08x", dev_id);
+    return;
+  }
+
+  /* Post to HA on first packet or state change */
+  if (s->tamper != tamper) {
+    s->tamper = tamper;
+    post_sensor_state(dev_id, "tamper", tamper != 0, rssi, lqi);
+  }
+
+  if (s->reed != reed) {
+    s->reed = reed;
+    post_sensor_state(dev_id, "reed", reed != 0, rssi, lqi);
+  }
+}
 
 static struct net_mgmt_event_callback mgmt_cb;
 
@@ -60,6 +145,12 @@ int main(void) {
   }
   LOG_INF("Connection OK");
 
+  /* Register with Home Assistant */
+  int ha_ret = ha_init();
+  if (ha_ret < 0) {
+    LOG_WRN("HA registration failed: %d (will retry on first sensor)", ha_ret);
+  }
+
   /* Enter RX mode */
   cc1101_set_rx();
   LOG_INF("Listening for packets...");
@@ -69,10 +160,13 @@ int main(void) {
       if (cc1101_check_crc()) {
         uint8_t len = cc1101_receive_data(buffer);
         if (len > 0) {
-          LOG_INF("LENGTH: %d RSSI: %d LQI: %d", len, cc1101_get_rssi(),
-                  cc1101_get_lqi());
+          int rssi = cc1101_get_rssi();
+          uint8_t lqi = cc1101_get_lqi();
 
+          LOG_INF("LENGTH: %d RSSI: %d LQI: %d", len, rssi, lqi);
           LOG_HEXDUMP_INF(buffer, len, "RX data");
+
+          process_packet(buffer, len, rssi, lqi);
         }
       }
     }
