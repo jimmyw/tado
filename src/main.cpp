@@ -20,38 +20,58 @@ void setup() {
   // ELECHOUSE_cc1101.setCCMode(1); // set config for internal transmission
   // mode.
 
-  ELECHOUSE_cc1101.setModulation(0); // CHECK
-  ELECHOUSE_cc1101.setMHZ(868.75); // CHECK
-  ELECHOUSE_cc1101.setDeviation(25); // CHECK
-  ELECHOUSE_cc1101.setChannel(0); // CHECK
-  ELECHOUSE_cc1101.setChsp(200); // CHECK
-  ELECHOUSE_cc1101.setRxBW(120); // CHECK
-  ELECHOUSE_cc1101.setDRate(4.8); // CHECK
-  //ELECHOUSE_cc1101.setDRate(6); // CHECK
-  ELECHOUSE_cc1101.setPA(8);
-  ELECHOUSE_cc1101.setSyncMode(2); // CHECK
-  ELECHOUSE_cc1101.setSyncWord(0xff, 0xfe); // CHECK
-  ELECHOUSE_cc1101.setAdrChk(0); // CHECK
-  ELECHOUSE_cc1101.setAddr(0); // CHECK
-  ELECHOUSE_cc1101.setWhiteData(0); // CHECK
-  ELECHOUSE_cc1101.setPktFormat(0); // CHECK
-  ELECHOUSE_cc1101.setLengthConfig(2); // CHECK
-  ELECHOUSE_cc1101.setPacketLength(0xd1); // CHECK
-  ELECHOUSE_cc1101.setCrc(0); // CHECK
-  ELECHOUSE_cc1101.setCRC_AF(0); // CHECK
-  ELECHOUSE_cc1101.setDcFilterOff(0); // CHECK
-  ELECHOUSE_cc1101.setManchester(0); // CHECK
-  ELECHOUSE_cc1101.setFEC(0); // CHECK
-  ELECHOUSE_cc1101.setPRE(2); // CHECK
-  ELECHOUSE_cc1101.setPQT(0); // CHECK
-  ELECHOUSE_cc1101.setAppendStatus(0); // CHECK
+  // Radio configuration per PROTOCOL.md
+  ELECHOUSE_cc1101.setModulation(1);  // GFSK (transmitter uses MOD_FORMAT=001)
+  ELECHOUSE_cc1101.setMHZ(868.0);     // 868.0 MHz
+  ELECHOUSE_cc1101.setDeviation(5.2); // 5.2 kHz
+  ELECHOUSE_cc1101.setChannel(0);
+  ELECHOUSE_cc1101.setChsp(200);
+  ELECHOUSE_cc1101.setRxBW(58);             // 58 kHz RX bandwidth
+  ELECHOUSE_cc1101.setDRate(1.2);           // 1.2 kbps
+  ELECHOUSE_cc1101.setPA(12);               // +10 dBm (PA_TABLE 0xC0)
+  ELECHOUSE_cc1101.setSyncMode(3);          // 30/32 sync word detect
+  ELECHOUSE_cc1101.setSyncWord(0xD3, 0x91); // 0xD391D391
+  ELECHOUSE_cc1101.setAdrChk(0);            // No address check
+  ELECHOUSE_cc1101.setAddr(0);
+  ELECHOUSE_cc1101.setWhiteData(0);      // Data whitening disabled
+  ELECHOUSE_cc1101.setPktFormat(0);      // Normal mode
+  ELECHOUSE_cc1101.setLengthConfig(1);   // Variable packet length
+  ELECHOUSE_cc1101.setPacketLength(255); // Max packet length
+  ELECHOUSE_cc1101.setCrc(1);            // CRC enabled
+  ELECHOUSE_cc1101.setCRC_AF(0);         // No auto flush on bad CRC
+  ELECHOUSE_cc1101.setDcFilterOff(0);    // DC filter enabled
+  ELECHOUSE_cc1101.setManchester(0);
+  ELECHOUSE_cc1101.setFEC(0);
+  ELECHOUSE_cc1101.setPRE(2); // 4-byte preamble
+  ELECHOUSE_cc1101.setPQT(0);
+  ELECHOUSE_cc1101.setAppendStatus(1); // Append RSSI+LQI+CRC_OK
+
+  // Direct register writes per PROTOCOL.md
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FIFOTHR, 0x47); // RX FIFO threshold
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FSCTRL1, 0x06); // IF frequency
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FOCCFG, 0x16); // Freq offset compensation
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_BSCFG, 0x6C);  // Bit sync config
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_AGCCTRL2, 0x03);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_AGCCTRL1, 0x40);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_AGCCTRL0, 0x91);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREND1, 0xB6); // Front-end RX
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREND0, 0x10); // Front-end TX
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FSCAL3, 0xE9); // Freq synth cal
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FSCAL2, 0x2A);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FSCAL1, 0x00);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FSCAL0, 0x1F);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_TEST2, 0x81);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_TEST1, 0x35);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_TEST0, 0x09);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG0,
+                               0x06); // GDO0: sync word (Init sets 0x0D)
+  ELECHOUSE_cc1101.SpiWriteReg(
+      CC1101_DEVIATN, 0x15); // Exact match transmitter (library gives 0x16)
 
   Serial.println("Rx Mode");
-
-  ELECHOUSE_cc1101.setModulation(1);     // CHECK
-  ELECHOUSE_cc1101.setMHZ(868.44943725); // CHECK   0x66 0xE3
-  //ELECHOUSE_cc1101.setMHZ(868.84929685); //  CHECK   0x6A 0xD3
-  ELECHOUSE_cc1101.SpiWriteReg(CC1101_BSCFG, 0x6C);
+  ELECHOUSE_cc1101.SpiWriteReg(
+      CC1101_FSCTRL0,
+      0x0); // reset frequency offset to 0 (Init sets 0x08)
 
 #if 0
   Serial.printf("Partnum: %x\r\n",
@@ -78,16 +98,13 @@ void setup() {
                 ELECHOUSE_cc1101.SpiReadStatus(CC1101_RXBYTES));
 #endif
 
-#if 0
+#if 1
   // Read all registers from 0x00 to 0x3F
-  for (int i = 0; i < 0x3F; i++) {
-    Serial.printf("REG: %02X: %02X\r\n", i,
-                  ELECHOUSE_cc1101.SpiReadReg(i));
-  }
+  // for (int i = 0; i < 0x3F; i++) {
+  //  Serial.printf("REG: %02X: %02X\r\n", i, ELECHOUSE_cc1101.SpiReadReg(i));
+  //}
 #endif
   Serial.println("Listening for packets...");
-
-
 }
 byte buffer[1024] = {0};
 
