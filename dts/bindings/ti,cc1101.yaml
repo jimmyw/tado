@@ -1,0 +1,5 @@
+description: Texas Instruments CC1101 Sub-1GHz RF Transceiver
+
+compatible: "ti,cc1101"
+
+include: spi-device.yaml

@@ -1,0 +1,4 @@
+#!/bin/bash
+source ~/zephyrproject/.venv/bin/activate
+export ZEPHYR_BASE=~/zephyrproject/zephyr
+export ZEPHYR_SDK_INSTALL_DIR=~/zephyr-sdk-1.0.1
