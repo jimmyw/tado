@@ -65,6 +65,16 @@ Address,Register,Value,Description
 0x18,MCSM0,0x08,Main Radio Control State Machine configuration
 0x19,FOCCFG,0x16,Frequency Offset Compensation configuration
 0x1A,BSCFG,0x6C,Bit Synchronization configuration
+7:6 BS_PRE_KI
+5:4 BS_PRE_KP
+3: BS_POST_KI
+2: BS_POST_KP
+1:0 BS_LIMIT
+01 10 1 1 00
+
+00 01 1 1 00
+
+
 0x1B,AGCTRL2,0x43,AGC control
 0x1C,AGCTRL1,0x40,AGC control
 0x1D,AGCTRL0,0x91,AGC control
@@ -94,6 +104,71 @@ Address,Register,Value,Description
 0x08,PKTCTRL0,0x02,Packet automation control
 0x02,IOCFG0,0x02,GDO0 output pin configuration
 0x03,FIFOTHR,0x07,RX FIFO and TX FIFO thresholds
+
+
+REG: 00: 0D
+REG: 01: 2E
+REG: 02: 0D
+REG: 03: 07
+REG: 04: FF
+REG: 05: FE
+REG: 06: D1
+REG: 07: 00
+REG: 08: 02
+REG: 09: 00
+REG: 0A: 00
+REG: 0B: 06
+REG: 0C: 49 <-- DIFF, based on calibration
+REG: 0D: 21
+REG: 0E: 6A << -- DIFF Freqvency
+REG: 0F: D2 << -- DIFF Freqvency
+REG: 10: A7
+REG: 11: E4 << DIFF DATARATE
+REG: 12: 12 << Dif modem, but change after
+REG: 13: 22
+REG: 14: F8
+REG: 15: 40
+REG: 16: 07
+REG: 17: 30
+REG: 18: 18 << Diff main radio state Auto calibrate?
+REG: 19: 16
+REG: 1A: 1C << Diff Bit snc conf
+REG: 1B: C7 << Diff AGC
+REG: 1C: 00 << Diff AGC
+REG: 1D: B2 << Diff AGC
+REG: 1E: 87
+REG: 1F: 6B
+REG: 20: F8
+REG: 21: 56
+REG: 22: 10
+REG: 23: E9
+REG: 24: 2A
+REG: 25: 00
+REG: 26: 1F
+REG: 27: 41
+REG: 28: 00
+REG: 29: 59
+REG: 2A: 7F
+REG: 2B: 3F
+REG: 2C: 81
+REG: 2D: 35
+REG: 2E: 09
+REG: 2F: 00
+REG: 30: FF
+REG: 31: 0F
+REG: 32: 5F
+REG: 33: 3F
+REG: 34: 5F
+REG: 35: 1F
+REG: 36: 0F
+REG: 37: 0F
+REG: 38: 0F
+REG: 39: 0F
+REG: 3A: 0F
+REG: 3B: 0F
+REG: 3C: 0F
+REG: 3D: 0F
+REG: 3E: C6
 
 
 CA 02 C4 05 01 FD 05 FD 02 EC F9 1C 30 CF 31 39 B5 41 2D F0 66 8F AD
@@ -169,3 +244,32 @@ AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
 AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
 AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43 06 E3 CF
 
+
+#sent on 868.84929685 Mhz
+C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA FF FE C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA FF FE C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46
+AA FF FE C3 02 C4 05 01 FD F0 26 1E B9
+AA 00 01 C3 FD 3B FA FE 02 F0 D9 1E 46 06 E3 CF
+
+#sent on 868.44943725 0x66 0xE3
+C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43
+AA FF FE C3 02 C4 05 01 FD F0 66 1A BC
+AA 00 01 C3 FD 3B FA FE 02 F0 66 E5 43 06 E3 CF
+
+
+0x0D,FREQ2,0x21,"Frequency control word, high byte"   26 * 0x21 = 858
+0x0E,FREQ1,0x6A,"Frequency control word, middle byte" 0.1015621 * 0x6A = 10.7655826
+0x0F,FREQ0,0xD3,"Frequency control word, low byte"  0.00039675 * 0xd3 = 0.08371425
+868.84929685 Mhz
+
+
+FC FA FF FB 7E EF B7 6F A1 86 A4 00 86 86 CD 9B B6 19 08 6B 92 A9 78 0C 86 AA D0 A8 84 75 55 AC AA 38 E2 BF 29 3A 7A F8 59 2A 21 99 E9 56 26 92 BB 7E F5 D0 AF 8C 51 20 01 18 CC 41 00 80 00

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <SPI.h>
 
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 
@@ -20,58 +21,39 @@ void setup() {
   // mode.
 
   ELECHOUSE_cc1101.setModulation(0); // CHECK
-
   ELECHOUSE_cc1101.setMHZ(868.75); // CHECK
-
   ELECHOUSE_cc1101.setDeviation(25); // CHECK
-
   ELECHOUSE_cc1101.setChannel(0); // CHECK
-
   ELECHOUSE_cc1101.setChsp(200); // CHECK
-
   ELECHOUSE_cc1101.setRxBW(120); // CHECK
-
-  ELECHOUSE_cc1101.setDRate(6); // CHECK
-
+  ELECHOUSE_cc1101.setDRate(4.8); // CHECK
+  //ELECHOUSE_cc1101.setDRate(6); // CHECK
   ELECHOUSE_cc1101.setPA(8);
-
   ELECHOUSE_cc1101.setSyncMode(2); // CHECK
-
   ELECHOUSE_cc1101.setSyncWord(0xff, 0xfe); // CHECK
-
   ELECHOUSE_cc1101.setAdrChk(0); // CHECK
-
   ELECHOUSE_cc1101.setAddr(0); // CHECK
-
   ELECHOUSE_cc1101.setWhiteData(0); // CHECK
-
   ELECHOUSE_cc1101.setPktFormat(0); // CHECK
-
   ELECHOUSE_cc1101.setLengthConfig(2); // CHECK
-
   ELECHOUSE_cc1101.setPacketLength(0xd1); // CHECK
-
   ELECHOUSE_cc1101.setCrc(0); // CHECK
-
   ELECHOUSE_cc1101.setCRC_AF(0); // CHECK
-
   ELECHOUSE_cc1101.setDcFilterOff(0); // CHECK
-
   ELECHOUSE_cc1101.setManchester(0); // CHECK
-
   ELECHOUSE_cc1101.setFEC(0); // CHECK
-
   ELECHOUSE_cc1101.setPRE(2); // CHECK
-
   ELECHOUSE_cc1101.setPQT(0); // CHECK
-
   ELECHOUSE_cc1101.setAppendStatus(0); // CHECK
 
   Serial.println("Rx Mode");
 
   ELECHOUSE_cc1101.setModulation(1);     // CHECK
-  ELECHOUSE_cc1101.setMHZ(868.44943725); // CHECK
+  ELECHOUSE_cc1101.setMHZ(868.44943725); // CHECK   0x66 0xE3
+  //ELECHOUSE_cc1101.setMHZ(868.84929685); //  CHECK   0x6A 0xD3
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_BSCFG, 0x6C);
 
+#if 0
   Serial.printf("Partnum: %x\r\n",
                 ELECHOUSE_cc1101.SpiReadStatus(CC1101_PARTNUM));
   Serial.printf("Version: %x\r\n",
@@ -94,8 +76,18 @@ void setup() {
                 ELECHOUSE_cc1101.SpiReadStatus(CC1101_TXBYTES));
   Serial.printf("RXBYTES: %x\r\n",
                 ELECHOUSE_cc1101.SpiReadStatus(CC1101_RXBYTES));
+#endif
 
+#if 0
+  // Read all registers from 0x00 to 0x3F
+  for (int i = 0; i < 0x3F; i++) {
+    Serial.printf("REG: %02X: %02X\r\n", i,
+                  ELECHOUSE_cc1101.SpiReadReg(i));
+  }
+#endif
   Serial.println("Listening for packets...");
+
+
 }
 byte buffer[1024] = {0};
 
