@@ -18,20 +18,21 @@
 |------------------|----------|-----------------------------------------------|
 | Preamble         | 4 bytes  | 0xAA pattern, inserted by CC1101              |
 | Sync word        | 4 bytes  | 0xD391D391 (CC1101 default, 30/32 bit detect) |
-| Length byte      | 1 byte   | Payload length (= 7)                          |
-| Payload          | 7 bytes  | Application data (see below)                  |
+| Length byte      | 1 byte   | Payload length (= 9)                          |
+| Payload          | 9 bytes  | Application data (see below)                  |
 | CRC-16           | 2 bytes  | Computed and appended by CC1101               |
 
 Data whitening is **disabled** (PKTCTRL0 bit 6 = 0).
 
-## Payload Structure (7 bytes)
+## Payload Structure (9 bytes)
 
 | Offset | Size   | Field        | Description                                          |
 |--------|--------|--------------|------------------------------------------------------|
 | 0–3    | 4 bytes| Device ID    | Unique device identifier (hardcoded per sensor)      |
 | 4      | 1 byte | Tamper       | 0 = closed (OK), 1 = open (tampered)                 |
 | 5      | 1 byte | Reed switch  | 0 = closed (window shut), 1 = open (window open)     |
-| 6      | 1 byte | Checksum     | XOR of bytes 0–5                                     |
+| 6–7    | 2 bytes| Battery mV   | Supply voltage in millivolts, big-endian              |
+| 8      | 1 byte | Checksum     | XOR of bytes 0–7                                     |
 
 ## Event Types
 

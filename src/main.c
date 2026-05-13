@@ -20,12 +20,14 @@ LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
 /* ── Sensor state tracking ──────────────────────────────────────────── */
 
 #define MAX_SENSORS 8
-#define PAYLOAD_LEN 7
+#define PAYLOAD_LEN_OLD 7
+#define PAYLOAD_LEN_NEW 9
 
 struct sensor_state {
   uint32_t device_id;
   uint8_t tamper;
   uint8_t reed;
+  uint16_t battery_mv;
 };
 
 static struct sensor_state sensors[MAX_SENSORS];
@@ -46,12 +48,12 @@ static struct sensor_state *find_or_add_sensor(uint32_t dev_id) {
   return NULL;
 }
 
-static bool verify_checksum(const uint8_t *payload) {
+static bool verify_checksum(const uint8_t *payload, uint8_t len) {
   uint8_t xor_val = 0;
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < len - 1; i++) {
     xor_val ^= payload[i];
   }
-  return xor_val == payload[6];
+  return xor_val == payload[len - 1];
 }
 
 static void post_sensor_state(uint32_t dev_id, const char *suffix, bool state,
@@ -64,12 +66,12 @@ static void post_sensor_state(uint32_t dev_id, const char *suffix, bool state,
 
 static void process_packet(const uint8_t *payload, uint8_t len, int rssi,
                            uint8_t lqi) {
-  if (len != PAYLOAD_LEN) {
+  if (len != PAYLOAD_LEN_OLD && len != PAYLOAD_LEN_NEW) {
     LOG_WRN("Unexpected payload length: %d", len);
     return;
   }
 
-  if (!verify_checksum(payload)) {
+  if (!verify_checksum(payload, len)) {
     LOG_WRN("Checksum mismatch");
     return;
   }
@@ -80,8 +82,13 @@ static void process_packet(const uint8_t *payload, uint8_t len, int rssi,
   uint8_t tamper = payload[4];
   uint8_t reed = payload[5];
 
-  LOG_INF("Sensor %08x: tamper=%u reed=%u RSSI=%d LQI=%u", dev_id, tamper, reed,
-          rssi, lqi);
+  uint16_t battery_mv = 0;
+  if (len == PAYLOAD_LEN_NEW) {
+    battery_mv = ((uint16_t)payload[6] << 8) | payload[7];
+  }
+
+  LOG_INF("Sensor %08x: tamper=%u reed=%u batt=%umV RSSI=%d LQI=%u", dev_id,
+          tamper, reed, battery_mv, rssi, lqi);
 
   struct sensor_state *s = find_or_add_sensor(dev_id);
   if (!s) {
@@ -98,6 +105,11 @@ static void process_packet(const uint8_t *payload, uint8_t len, int rssi,
   if (s->reed != reed) {
     s->reed = reed;
     post_sensor_state(dev_id, "reed", reed != 0, rssi, lqi);
+  }
+
+  if (len == PAYLOAD_LEN_NEW && s->battery_mv != battery_mv) {
+    s->battery_mv = battery_mv;
+    ha_update_battery(dev_id, battery_mv, rssi, lqi);
   }
 }
 

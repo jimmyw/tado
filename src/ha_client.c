@@ -224,6 +224,37 @@ static int ha_register_sensor(const char *unique_id, const char *name,
   return 0;
 }
 
+static int ha_register_sensor_analog(const char *unique_id, const char *name,
+                                     const char *device_class,
+                                     const char *unit) {
+  char url[URL_BUF_SIZE];
+  char body[BODY_BUF_SIZE];
+
+  snprintf(url, sizeof(url), "/api/webhook/%s", webhook_id);
+
+  int body_len = snprintf(body, sizeof(body),
+                          "{"
+                          "\"type\":\"register_sensor\","
+                          "\"data\":{"
+                          "\"unique_id\":\"%s\","
+                          "\"name\":\"%s\","
+                          "\"type\":\"sensor\","
+                          "\"device_class\":\"%s\","
+                          "\"unit_of_measurement\":\"%s\","
+                          "\"state\":0"
+                          "}"
+                          "}",
+                          unique_id, name, device_class, unit);
+
+  int status = ha_post(url, body, body_len, false);
+  if (status < 0) {
+    return status;
+  }
+
+  LOG_INF("Registered analog sensor: %s -> HTTP %d", unique_id, status);
+  return 0;
+}
+
 /* ── Public API ─────────────────────────────────────────────────────── */
 
 int ha_init(void) {
@@ -285,5 +316,56 @@ int ha_update_sensor(uint32_t dev_id, const char *suffix, bool state, int rssi,
   }
 
   LOG_INF("Updated %s=%s -> HTTP %d", unique_id, state ? "on" : "off", status);
+  return 0;
+}
+
+int ha_update_battery(uint32_t dev_id, uint16_t battery_mv, int rssi,
+                      uint8_t lqi) {
+  if (!registered) {
+    return -EAGAIN;
+  }
+
+  char unique_id[32];
+  char name[48];
+  char url[URL_BUF_SIZE];
+  char body[BODY_BUF_SIZE];
+
+  snprintf(unique_id, sizeof(unique_id), "tado_%08x_battery", dev_id);
+  snprintf(name, sizeof(name), "Tado %08x battery", dev_id);
+  snprintf(url, sizeof(url), "/api/webhook/%s", webhook_id);
+
+  /* Convert mV to V with one decimal: e.g. 3200 -> "3.2" */
+  int body_len = snprintf(body, sizeof(body),
+                          "{"
+                          "\"type\":\"update_sensor_states\","
+                          "\"data\":[{"
+                          "\"unique_id\":\"%s\","
+                          "\"type\":\"sensor\","
+                          "\"state\":%u.%u,"
+                          "\"attributes\":{"
+                          "\"rssi\":%d,"
+                          "\"lqi\":%u"
+                          "}"
+                          "}]"
+                          "}",
+                          unique_id, battery_mv / 1000,
+                          (battery_mv % 1000) / 100, rssi, lqi);
+
+  int status = ha_post(url, body, body_len, false);
+  if (status < 0) {
+    return status;
+  }
+
+  if (strstr((char *)recv_buf, "not_registered")) {
+    ha_register_sensor_analog(unique_id, name, "voltage", "V");
+
+    status = ha_post(url, body, body_len, false);
+    if (status < 0) {
+      return status;
+    }
+  }
+
+  LOG_INF("Updated %s=%u.%uV -> HTTP %d", unique_id, battery_mv / 1000,
+          (battery_mv % 1000) / 100, status);
   return 0;
 }
