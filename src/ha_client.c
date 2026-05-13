@@ -107,8 +107,7 @@ static int flash_save_webhook_id(void) {
   uint16_t len = (uint16_t)strlen(webhook_id);
   int ret;
 
-  ret = flash_erase(flash_dev, flash_offset,
-                    PARTITION_SIZE(storage_partition));
+  ret = flash_erase(flash_dev, flash_offset, PARTITION_SIZE(storage_partition));
   if (ret) {
     LOG_ERR("Flash erase failed: %d", ret);
     return ret;
@@ -120,8 +119,7 @@ static int flash_save_webhook_id(void) {
     return ret;
   }
 
-  ret = flash_write(flash_dev, flash_offset + sizeof(magic), &len,
-                    sizeof(len));
+  ret = flash_write(flash_dev, flash_offset + sizeof(magic), &len, sizeof(len));
   if (ret) {
     LOG_ERR("Flash write len failed: %d", ret);
     return ret;
@@ -384,6 +382,8 @@ int ha_init(void) {
   flash_save_webhook_id();
   return 0;
 }
+
+bool ha_is_registered(void) { return registered; }
 
 int ha_update_sensor(uint32_t dev_id, const char *suffix, bool state, int rssi,
                      uint8_t lqi) {

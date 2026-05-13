@@ -42,4 +42,5 @@ int ha_update_sensor(uint32_t dev_id, const char *suffix, bool state, int rssi,
 int ha_update_battery(uint32_t dev_id, uint16_t battery_mv, int rssi,
                       uint8_t lqi);
 
+bool ha_is_registered(void);
 #endif /* HA_CLIENT_H */

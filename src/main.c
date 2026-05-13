@@ -114,6 +114,7 @@ static void process_packet(const uint8_t *payload, uint8_t len, int rssi,
 }
 
 static struct net_mgmt_event_callback mgmt_cb;
+static bool got_ip = false;
 
 static void net_event_handler(struct net_mgmt_event_callback *cb,
                               uint64_t mgmt_event, struct net_if *iface) {
@@ -123,6 +124,7 @@ static void net_event_handler(struct net_mgmt_event_callback *cb,
     LOG_INF("DHCP bound: %s",
             net_addr_ntop(AF_INET, &iface->config.dhcpv4.requested_ip, buf,
                           sizeof(buf)));
+    got_ip = true;
   }
 }
 
@@ -155,19 +157,25 @@ int main(void) {
     LOG_ERR("CC1101 init failed: %d", ret);
     return ret;
   }
-  LOG_INF("Connection OK");
-
-  /* Register with Home Assistant */
-  int ha_ret = ha_init();
-  if (ha_ret < 0) {
-    LOG_WRN("HA registration failed: %d (will retry on first sensor)", ha_ret);
-  }
+  LOG_INF("C1101 OK");
 
   /* Enter RX mode */
   cc1101_set_rx();
   LOG_INF("Listening for packets...");
 
   while (1) {
+
+    if (got_ip && !ha_is_registered()) {
+      /* Register with Home Assistant */
+      LOG_INF("Registering with Home Assistant...");
+      int ha_ret = ha_init();
+      if (ha_ret < 0) {
+        LOG_WRN("HA registration failed: %d (will retry on first sensor)",
+                ha_ret);
+      }
+      LOG_INF("Initialization complete, waiting for sensor data...");
+    }
+
     if (cc1101_check_rx_fifo(100)) {
       if (cc1101_check_crc()) {
         uint8_t len = cc1101_receive_data(buffer);
@@ -182,7 +190,7 @@ int main(void) {
         }
       }
     }
-    k_yield();
+    k_msleep(1);
   }
   return 0;
 }
