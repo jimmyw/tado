@@ -82,8 +82,7 @@ static int ha_post(const char *url, const char *body, int body_len,
     return sock;
   }
 
-  static const char *auth_hdr =
-      "Authorization: Bearer " HA_TOKEN "\r\n";
+  static const char *auth_hdr = "Authorization: Bearer " HA_TOKEN "\r\n";
   const char *headers_auth[] = {auth_hdr, NULL};
   const char *headers_none[] = {NULL};
 
@@ -157,20 +156,19 @@ static int parse_webhook_id(const uint8_t *buf, size_t len) {
 static int ha_register_device(void) {
   char body[BODY_BUF_SIZE];
 
-  int body_len = snprintf(
-      body, sizeof(body),
-      "{"
-      "\"device_id\":\"tado_cc1101_receiver\","
-      "\"app_id\":\"tado_cc1101\","
-      "\"app_name\":\"Tado CC1101 Receiver\","
-      "\"app_version\":\"1.0.0\","
-      "\"device_name\":\"Tado RF Gateway\","
-      "\"manufacturer\":\"DIY\","
-      "\"model\":\"BlackPill F411CE + CC1101\","
-      "\"os_name\":\"Zephyr\","
-      "\"os_version\":\"4.4.0\","
-      "\"supports_encryption\":false"
-      "}");
+  int body_len = snprintf(body, sizeof(body),
+                          "{"
+                          "\"device_id\":\"tado_cc1101_receiver\","
+                          "\"app_id\":\"tado_cc1101\","
+                          "\"app_name\":\"Tado CC1101 Receiver\","
+                          "\"app_version\":\"1.0.0\","
+                          "\"device_name\":\"Tado RF Gateway\","
+                          "\"manufacturer\":\"DIY\","
+                          "\"model\":\"BlackPill F411CE + CC1101\","
+                          "\"os_name\":\"Zephyr\","
+                          "\"os_version\":\"4.4.0\","
+                          "\"supports_encryption\":false"
+                          "}");
 
   int status = ha_post("/api/mobile_app/registrations", body, body_len, true);
   if (status < 0) {
@@ -204,19 +202,18 @@ static int ha_register_sensor(const char *unique_id, const char *name,
 
   snprintf(url, sizeof(url), "/api/webhook/%s", webhook_id);
 
-  int body_len = snprintf(
-      body, sizeof(body),
-      "{"
-      "\"type\":\"register_sensor\","
-      "\"data\":{"
-      "\"unique_id\":\"%s\","
-      "\"name\":\"%s\","
-      "\"type\":\"binary_sensor\","
-      "\"device_class\":\"%s\","
-      "\"state\":false"
-      "}"
-      "}",
-      unique_id, name, device_class);
+  int body_len = snprintf(body, sizeof(body),
+                          "{"
+                          "\"type\":\"register_sensor\","
+                          "\"data\":{"
+                          "\"unique_id\":\"%s\","
+                          "\"name\":\"%s\","
+                          "\"type\":\"binary_sensor\","
+                          "\"device_class\":\"%s\","
+                          "\"state\":false"
+                          "}"
+                          "}",
+                          unique_id, name, device_class);
 
   int status = ha_post(url, body, body_len, false);
   if (status < 0) {
@@ -254,21 +251,20 @@ int ha_update_sensor(uint32_t dev_id, const char *suffix, bool state, int rssi,
   snprintf(url, sizeof(url), "/api/webhook/%s", webhook_id);
 
   /* Try to update; if sensor is not registered yet, register first */
-  int body_len = snprintf(
-      body, sizeof(body),
-      "{"
-      "\"type\":\"update_sensor_states\","
-      "\"data\":[{"
-      "\"unique_id\":\"%s\","
-      "\"type\":\"binary_sensor\","
-      "\"state\":%s,"
-      "\"attributes\":{"
-      "\"rssi\":%d,"
-      "\"lqi\":%u"
-      "}"
-      "}]"
-      "}",
-      unique_id, state ? "true" : "false", rssi, lqi);
+  int body_len = snprintf(body, sizeof(body),
+                          "{"
+                          "\"type\":\"update_sensor_states\","
+                          "\"data\":[{"
+                          "\"unique_id\":\"%s\","
+                          "\"type\":\"binary_sensor\","
+                          "\"state\":%s,"
+                          "\"attributes\":{"
+                          "\"rssi\":%d,"
+                          "\"lqi\":%u"
+                          "}"
+                          "}]"
+                          "}",
+                          unique_id, state ? "true" : "false", rssi, lqi);
 
   int status = ha_post(url, body, body_len, false);
   if (status < 0) {
