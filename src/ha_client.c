@@ -19,6 +19,9 @@
 #include <zephyr/net/http/client.h>
 #include <zephyr/net/socket.h>
 
+#include <zephyr/drivers/flash.h>
+#include <zephyr/storage/flash_map.h>
+
 LOG_MODULE_REGISTER(ha_client, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define HA_HOST CONFIG_HA_SERVER_IP
@@ -33,6 +36,107 @@ LOG_MODULE_REGISTER(ha_client, CONFIG_LOG_DEFAULT_LEVEL);
 static uint8_t recv_buf[RECV_BUF_SIZE];
 static char webhook_id[WEBHOOK_ID_SIZE];
 static bool registered;
+
+/* ── Flash persistent storage ───────────────────────────────────────── */
+
+/*
+ * Simple flash storage for the webhook_id.  NVS cannot be used because
+ * the STM32F411 large sectors are 128 KB, exceeding NVS's 64 KB limit.
+ * We only write on first registration so wear is not a concern.
+ *
+ * Layout at the start of storage_partition:
+ *   [0..3]  magic  0x5441444F ("TADO")
+ *   [4..5]  length (uint16_t LE, of webhook string excl. NUL)
+ *   [6.. ]  webhook_id bytes (no NUL stored)
+ */
+
+#define STORAGE_MAGIC 0x5441444FU /* "TADO" */
+
+static const struct device *flash_dev;
+static off_t flash_offset;
+
+static int flash_storage_setup(void) {
+  flash_dev = PARTITION_DEVICE(storage_partition);
+
+  if (!device_is_ready(flash_dev)) {
+    LOG_ERR("Flash device not ready");
+    return -ENODEV;
+  }
+
+  flash_offset = PARTITION_OFFSET(storage_partition);
+  LOG_INF("Flash storage ready at offset 0x%lx", (long)flash_offset);
+  return 0;
+}
+
+static int flash_load_webhook_id(void) {
+  uint32_t magic;
+  uint16_t len;
+  int ret;
+
+  ret = flash_read(flash_dev, flash_offset, &magic, sizeof(magic));
+  if (ret) {
+    return ret;
+  }
+
+  if (magic != STORAGE_MAGIC) {
+    return -ENOENT;
+  }
+
+  ret = flash_read(flash_dev, flash_offset + sizeof(magic), &len, sizeof(len));
+  if (ret) {
+    return ret;
+  }
+
+  if (len == 0 || len >= WEBHOOK_ID_SIZE) {
+    return -EINVAL;
+  }
+
+  ret = flash_read(flash_dev, flash_offset + sizeof(magic) + sizeof(len),
+                   webhook_id, len);
+  if (ret) {
+    return ret;
+  }
+
+  webhook_id[len] = '\0';
+  LOG_INF("Loaded webhook_id from flash: %s", webhook_id);
+  return 0;
+}
+
+static int flash_save_webhook_id(void) {
+  uint32_t magic = STORAGE_MAGIC;
+  uint16_t len = (uint16_t)strlen(webhook_id);
+  int ret;
+
+  ret = flash_erase(flash_dev, flash_offset,
+                    PARTITION_SIZE(storage_partition));
+  if (ret) {
+    LOG_ERR("Flash erase failed: %d", ret);
+    return ret;
+  }
+
+  ret = flash_write(flash_dev, flash_offset, &magic, sizeof(magic));
+  if (ret) {
+    LOG_ERR("Flash write magic failed: %d", ret);
+    return ret;
+  }
+
+  ret = flash_write(flash_dev, flash_offset + sizeof(magic), &len,
+                    sizeof(len));
+  if (ret) {
+    LOG_ERR("Flash write len failed: %d", ret);
+    return ret;
+  }
+
+  ret = flash_write(flash_dev, flash_offset + sizeof(magic) + sizeof(len),
+                    webhook_id, len);
+  if (ret) {
+    LOG_ERR("Flash write data failed: %d", ret);
+    return ret;
+  }
+
+  LOG_INF("Saved webhook_id to flash");
+  return 0;
+}
 
 /* ── HTTP helpers ───────────────────────────────────────────────────── */
 
@@ -258,11 +362,26 @@ static int ha_register_sensor_analog(const char *unique_id, const char *name,
 /* ── Public API ─────────────────────────────────────────────────────── */
 
 int ha_init(void) {
-  int ret = ha_register_device();
+  int ret = flash_storage_setup();
+  if (ret < 0) {
+    LOG_WRN("Flash storage setup failed: %d, will register fresh", ret);
+  }
+
+  /* Try to restore webhook_id from flash */
+  if (ret == 0 && flash_load_webhook_id() == 0) {
+    LOG_INF("Reusing saved webhook_id — skipping device registration");
+    registered = true;
+    return 0;
+  }
+
+  /* No saved webhook_id — register with Home Assistant */
+  ret = ha_register_device();
   if (ret < 0) {
     return ret;
   }
+
   registered = true;
+  flash_save_webhook_id();
   return 0;
 }
 

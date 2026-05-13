@@ -29,3 +29,23 @@
 		status = "okay";
 	};
 };
+
+/* Remove MCUboot partitions we don't use, add NVS storage partition.
+ * STM32F411CE sectors 6+7 (each 128 KB) at offsets 0x40000-0x7FFFF. */
+/delete-node/ &boot_partition;
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+/delete-node/ &scratch_partition;
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		storage_partition: partition@40000 {
+			label = "storage";
+			reg = <0x40000 0x40000>;
+		};
+	};
+};
