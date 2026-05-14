@@ -19,30 +19,48 @@ LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
 
 /* ── Sensor state tracking ──────────────────────────────────────────── */
 
-#define MAX_SENSORS 8
+#define MAX_SENSORS 16
 #define PAYLOAD_LEN_OLD 7
 #define PAYLOAD_LEN_NEW 9
 
-struct sensor_state {
+typedef struct sensor_state {
   uint32_t device_id;
+
+  // Values from last packet (0 or 1, or 0xFF if unknown)
   uint8_t tamper;
   uint8_t reed;
   uint16_t battery_mv;
-};
 
-static struct sensor_state sensors[MAX_SENSORS];
+  // Values last sent to HA, for change detection
+  uint8_t tamper_sent;
+  uint8_t reed_sent;
+  uint16_t battery_mv_sent;
+
+  // Additional for metrics
+  int rssi;
+  uint8_t lqi;
+
+} sensor_state_t;
+
+static sensor_state_t sensors[MAX_SENSORS];
 static int sensor_count;
 
-static struct sensor_state *find_or_add_sensor(uint32_t dev_id) {
+static sensor_state_t *find_or_add_sensor(uint32_t dev_id) {
   for (int i = 0; i < sensor_count; i++) {
     if (sensors[i].device_id == dev_id) {
       return &sensors[i];
     }
   }
   if (sensor_count < MAX_SENSORS) {
-    sensors[sensor_count].device_id = dev_id;
-    sensors[sensor_count].tamper = 0xFF; /* force first update */
-    sensors[sensor_count].reed = 0xFF;
+    sensor_state_t *s = &sensors[sensor_count];
+    s->device_id = dev_id;
+    s->tamper = 0xFF; /* force first update */
+    s->reed = 0xFF;
+    s->battery_mv = 0xFFFF;
+    s->tamper_sent = 0xFF;
+    s->reed_sent = 0xFF;
+    s->battery_mv_sent = 0xFFFF;
+
     return &sensors[sensor_count++];
   }
   return NULL;
@@ -54,14 +72,6 @@ static bool verify_checksum(const uint8_t *payload, uint8_t len) {
     xor_val ^= payload[i];
   }
   return xor_val == payload[len - 1];
-}
-
-static void post_sensor_state(uint32_t dev_id, const char *suffix, bool state,
-                              int rssi, uint8_t lqi) {
-  int ret = ha_update_sensor(dev_id, suffix, state, rssi, lqi);
-  if (ret < 0) {
-    LOG_WRN("Failed to update %08x_%s: %d", dev_id, suffix, ret);
-  }
 }
 
 static void process_packet(const uint8_t *payload, uint8_t len, int rssi,
@@ -79,37 +89,59 @@ static void process_packet(const uint8_t *payload, uint8_t len, int rssi,
   uint32_t dev_id = ((uint32_t)payload[0] << 24) |
                     ((uint32_t)payload[1] << 16) | ((uint32_t)payload[2] << 8) |
                     payload[3];
-  uint8_t tamper = payload[4];
-  uint8_t reed = payload[5];
 
-  uint16_t battery_mv = 0;
-  if (len == PAYLOAD_LEN_NEW) {
-    battery_mv = ((uint16_t)payload[6] << 8) | payload[7];
-  }
-
-  LOG_INF("Sensor %08x: tamper=%u reed=%u batt=%umV RSSI=%d LQI=%u", dev_id,
-          tamper, reed, battery_mv, rssi, lqi);
-
-  struct sensor_state *s = find_or_add_sensor(dev_id);
+  sensor_state_t *s = find_or_add_sensor(dev_id);
   if (!s) {
     LOG_WRN("Sensor table full, ignoring %08x", dev_id);
     return;
   }
 
-  /* Post to HA on first packet or state change */
-  if (s->tamper != tamper) {
-    s->tamper = tamper;
-    post_sensor_state(dev_id, "tamper", tamper != 0, rssi, lqi);
-  }
+  s->tamper = payload[4];
+  s->reed = payload[5];
 
-  if (s->reed != reed) {
-    s->reed = reed;
-    post_sensor_state(dev_id, "reed", reed != 0, rssi, lqi);
+  if (len == PAYLOAD_LEN_NEW) {
+    s->battery_mv = ((uint16_t)payload[6] << 8) | payload[7];
   }
+  s->rssi = rssi;
+  s->lqi = lqi;
 
-  if (len == PAYLOAD_LEN_NEW && s->battery_mv != battery_mv) {
-    s->battery_mv = battery_mv;
-    ha_update_battery(dev_id, battery_mv, rssi, lqi);
+  LOG_INF("Sensor %08x: tamper=%u reed=%u batt=%umV RSSI=%d LQI=%u", dev_id,
+          s->tamper, s->reed, s->battery_mv, s->rssi, s->lqi);
+}
+
+static void sync_sensors_to_ha(void) {
+  for (int i = 0; i < sensor_count; i++) {
+    sensor_state_t *s = &sensors[i];
+
+    if (s->tamper != s->tamper_sent) {
+      int ret = ha_update_sensor(s->device_id, "tamper", s->tamper != 0,
+                                 s->rssi, s->lqi);
+      if (ret < 0) {
+        LOG_WRN("Failed to update %08x_%s: %d", s->device_id, "tamper", ret);
+      } else {
+        s->tamper_sent = s->tamper;
+      }
+    }
+
+    if (s->reed != s->reed_sent) {
+      int ret =
+          ha_update_sensor(s->device_id, "reed", s->reed != 0, s->rssi, s->lqi);
+      if (ret < 0) {
+        LOG_WRN("Failed to update %08x_%s: %d", s->device_id, "reed", ret);
+      } else {
+        s->reed_sent = s->reed;
+      }
+    }
+
+    if (s->battery_mv != s->battery_mv_sent) {
+      int ret = ha_update_battery(s->device_id, s->battery_mv, s->rssi, s->lqi);
+      if (ret < 0) {
+        LOG_WRN("Failed to update %08x_%s: %d", s->device_id, "battery_mv",
+                ret);
+      } else {
+        s->battery_mv_sent = s->battery_mv;
+      }
+    }
   }
 }
 
@@ -165,17 +197,6 @@ int main(void) {
 
   while (1) {
 
-    if (got_ip && !ha_is_registered()) {
-      /* Register with Home Assistant */
-      LOG_INF("Registering with Home Assistant...");
-      int ha_ret = ha_init();
-      if (ha_ret < 0) {
-        LOG_WRN("HA registration failed: %d (will retry on first sensor)",
-                ha_ret);
-      }
-      LOG_INF("Initialization complete, waiting for sensor data...");
-    }
-
     if (cc1101_check_rx_fifo(100)) {
       if (cc1101_check_crc()) {
         uint8_t len = cc1101_receive_data(buffer);
@@ -190,6 +211,25 @@ int main(void) {
         }
       }
     }
+
+    if (got_ip) {
+
+      if (!ha_is_registered()) {
+        /* Register with Home Assistant */
+        LOG_INF("Registering with Home Assistant...");
+        int ha_ret = ha_init();
+        if (ha_ret < 0) {
+          LOG_WRN("HA registration failed: %d (will retry)", ha_ret);
+        } else {
+          LOG_INF("HA registered, waiting for sensor data...");
+        }
+      }
+
+      if (ha_is_registered()) {
+        sync_sensors_to_ha();
+      }
+    }
+
     k_msleep(1);
   }
   return 0;
