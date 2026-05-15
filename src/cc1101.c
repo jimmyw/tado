@@ -171,10 +171,32 @@ void cc1101_set_rx(void) {
 
 bool cc1101_check_rx_fifo(int timeout_ms) {
   uint8_t rxbytes = cc1101_read_status_reg(CC1101_RXBYTES);
+
+  /* Bit 7 = overflow flag */
+  if (rxbytes & 0x80) {
+    LOG_WRN("RXFIFO overflow, flushing");
+    cc1101_strobe(CC1101_SIDLE);
+    cc1101_strobe(CC1101_SFRX);
+    cc1101_strobe(CC1101_SRX);
+    return false;
+  }
+
   if (rxbytes & BYTES_IN_RXFIFO) {
     k_msleep(timeout_ms);
     return true;
   }
+
+  /* No data — verify we're still in RX, recover if not */
+  uint8_t state = cc1101_read_status_reg(CC1101_MARCSTATE) & 0x1F;
+  if (state != 0x0D /* RX */ && state != 0x0E /* RX_END */ &&
+      state != 0x0F /* RX_RST */ &&
+      state < 0x08 /* skip calibration states 0x08–0x0C */) {
+    LOG_WRN("CC1101 not in RX (MARCSTATE=0x%02X), recovering", state);
+    cc1101_strobe(CC1101_SIDLE);
+    cc1101_strobe(CC1101_SFRX);
+    cc1101_strobe(CC1101_SRX);
+  }
+
   return false;
 }
 
