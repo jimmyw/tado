@@ -9,6 +9,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <zephyr/kernel.h>
 
 /* ── CC1101 configuration registers ─────────────────────────────────── */
 #define CC1101_IOCFG2 0x00
@@ -97,7 +98,7 @@
 /* ── public API ─────────────────────────────────────────────────────── */
 int cc1101_init(void);
 void cc1101_set_rx(void);
-bool cc1101_check_rx_fifo(int timeout_ms);
+int cc1101_wait_rx_packet(k_timeout_t timeout);
 bool cc1101_check_crc(void);
 uint8_t cc1101_receive_data(uint8_t *buffer);
 int cc1101_get_rssi(void);

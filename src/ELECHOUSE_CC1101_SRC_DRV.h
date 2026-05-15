@@ -20,7 +20,7 @@ publish Wilson Shen (ELECHOUSE).
 #include <Arduino.h>
 
 //***************************************CC1101
-//define**************************************************//
+// define**************************************************//
 // CC1101 CONFIG REGSITER
 #define CC1101_IOCFG2 0x00   // GDO2 output pin configuration
 #define CC1101_IOCFG1 0x01   // GDO1 output pin configuration

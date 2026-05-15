@@ -3,3 +3,11 @@ description: Texas Instruments CC1101 Sub-1GHz RF Transceiver
 compatible: "ti,cc1101"
 
 include: spi-device.yaml
+
+properties:
+  gdo0-gpios:
+    type: phandle-array
+    description: GDO0 output pin (active high)
+  gdo2-gpios:
+    type: phandle-array
+    description: GDO2 output pin (active high)

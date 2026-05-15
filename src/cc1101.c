@@ -7,6 +7,7 @@
 #include "cc1101.h"
 
 #include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -23,6 +24,17 @@ LOG_MODULE_REGISTER(cc1101, CONFIG_LOG_DEFAULT_LEVEL);
 static struct spi_dt_spec cc1101_spi =
     SPI_DT_SPEC_GET(DT_NODELABEL(cc1101),
                     SPI_OP_MODE_MASTER | SPI_WORD_SET(8) | SPI_TRANSFER_MSB, 0);
+
+/* ── GDO0 interrupt (end-of-packet) ─────────────────────────────────── */
+static const struct gpio_dt_spec gdo0 =
+    GPIO_DT_SPEC_GET(DT_NODELABEL(cc1101), gdo0_gpios);
+static struct gpio_callback gdo0_cb_data;
+static K_SEM_DEFINE(rx_sem, 0, 1);
+
+static void gdo0_isr(const struct device *dev, struct gpio_callback *cb,
+                     uint32_t pins) {
+  k_sem_give(&rx_sem);
+}
 
 /* ── Low-level SPI helpers ──────────────────────────────────────────── */
 
@@ -160,6 +172,16 @@ int cc1101_init(void) {
   /* Load PA table */
   cc1101_write_burst(CC1101_PATABLE, pa_table, sizeof(pa_table));
 
+  /* Configure GDO0 interrupt */
+  if (!gpio_is_ready_dt(&gdo0)) {
+    LOG_ERR("GDO0 GPIO not ready");
+    return -ENODEV;
+  }
+  gpio_pin_configure_dt(&gdo0, GPIO_INPUT);
+  gpio_pin_interrupt_configure_dt(&gdo0, GPIO_INT_EDGE_FALLING);
+  gpio_init_callback(&gdo0_cb_data, gdo0_isr, BIT(gdo0.pin));
+  gpio_add_callback(gdo0.port, &gdo0_cb_data);
+
   return 0;
 }
 
@@ -169,35 +191,35 @@ void cc1101_set_rx(void) {
   cc1101_strobe(CC1101_SRX);
 }
 
-bool cc1101_check_rx_fifo(int timeout_ms) {
-  uint8_t rxbytes = cc1101_read_status_reg(CC1101_RXBYTES);
+int cc1101_wait_rx_packet(k_timeout_t timeout) {
+  if (k_sem_take(&rx_sem, timeout) != 0) {
+    LOG_DBG("RX wait timed out");
+    /* Timeout — check MARCSTATE for recovery */
+    uint8_t state = cc1101_read_status_reg(CC1101_MARCSTATE) & 0x1F;
+    if (state != 0x0D /* RX */ && state != 0x0E /* RX_END */ &&
+        state != 0x0F /* RX_RST */ &&
+        state < 0x08 /* skip calibration states */) {
+      LOG_WRN("CC1101 not in RX (MARCSTATE=0x%02X), recovering", state);
+      cc1101_strobe(CC1101_SIDLE);
+      cc1101_strobe(CC1101_SFRX);
+      cc1101_strobe(CC1101_SRX);
+    }
+    return -EAGAIN;
+  } else {
+    LOG_DBG("Packet received, checking RXFIFO");
+  }
 
-  /* Bit 7 = overflow flag */
+  /* Check for RXFIFO overflow */
+  uint8_t rxbytes = cc1101_read_status_reg(CC1101_RXBYTES);
   if (rxbytes & 0x80) {
     LOG_WRN("RXFIFO overflow, flushing");
     cc1101_strobe(CC1101_SIDLE);
     cc1101_strobe(CC1101_SFRX);
     cc1101_strobe(CC1101_SRX);
-    return false;
+    return -EIO;
   }
 
-  if (rxbytes & BYTES_IN_RXFIFO) {
-    k_msleep(timeout_ms);
-    return true;
-  }
-
-  /* No data — verify we're still in RX, recover if not */
-  uint8_t state = cc1101_read_status_reg(CC1101_MARCSTATE) & 0x1F;
-  if (state != 0x0D /* RX */ && state != 0x0E /* RX_END */ &&
-      state != 0x0F /* RX_RST */ &&
-      state < 0x08 /* skip calibration states 0x08–0x0C */) {
-    LOG_WRN("CC1101 not in RX (MARCSTATE=0x%02X), recovering", state);
-    cc1101_strobe(CC1101_SIDLE);
-    cc1101_strobe(CC1101_SFRX);
-    cc1101_strobe(CC1101_SRX);
-  }
-
-  return false;
+  return 0;
 }
 
 bool cc1101_check_crc(void) {

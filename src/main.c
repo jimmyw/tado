@@ -197,7 +197,9 @@ int main(void) {
 
   while (1) {
 
-    if (cc1101_check_rx_fifo(100)) {
+    // Read data from radio, block max one second so we do reattempts on sending
+    // sensor data in-between
+    if (cc1101_wait_rx_packet(K_SECONDS(1)) == 0) {
       if (cc1101_check_crc()) {
         uint8_t len = cc1101_receive_data(buffer);
         if (len > 0) {
@@ -210,6 +212,8 @@ int main(void) {
           process_packet(buffer, len, rssi, lqi);
         }
       }
+    } else {
+      LOG_DBG("No packet received");
     }
 
     if (got_ip) {
